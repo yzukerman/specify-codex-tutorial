@@ -1,0 +1,6 @@
+[project]
+name = "todo-cli"
+version = "0.1.0"
+description = "A simple to-do CLI managed with uv."
+requires-python = ">=3.9"
+dependencies = []
