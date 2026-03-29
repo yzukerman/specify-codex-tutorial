@@ -11,6 +11,9 @@ from typing import Any
 TASKS_FILE = Path(__file__).with_name("tasks.json")
 VALID_STATUSES = {"pending", "completed"}
 MAX_TASK_LENGTH = 100
+RED = "\033[31m"
+GREEN = "\033[32m"
+RESET = "\033[0m"
 
 
 def load_tasks() -> list[dict[str, Any]]:
@@ -65,6 +68,14 @@ def find_task(tasks: list[dict[str, Any]], task_id: int) -> dict[str, Any] | Non
     return next((task for task in tasks if task["id"] == task_id), None)
 
 
+def colorize(text: str, status: str) -> str:
+    if status == "pending":
+        return f"{RED}{text}{RESET}"
+    if status == "completed":
+        return f"{GREEN}{text}{RESET}"
+    return text
+
+
 def render_table(tasks: list[dict[str, Any]]) -> str:
     headers = ("ID", "Task", "Status")
     rows = [(str(task["id"]), task["task"], task["status"]) for task in tasks]
@@ -80,7 +91,14 @@ def render_table(tasks: list[dict[str, Any]]) -> str:
     table_lines = [format_row(headers), separator]
 
     if rows:
-        table_lines.extend(format_row(row) for row in rows)
+        for row in rows:
+            status = row[2]
+            colored_row = (
+                row[0].ljust(widths[0]),
+                colorize(row[1].ljust(widths[1]), status),
+                colorize(row[2].ljust(widths[2]), status),
+            )
+            table_lines.append(" | ".join(colored_row))
     else:
         table_lines.append("No tasks found.")
 
@@ -115,6 +133,13 @@ def add_task(args: argparse.Namespace) -> int:
 def list_tasks(_: argparse.Namespace) -> int:
     tasks = load_tasks()
     print(render_table(tasks))
+    return 0
+
+
+def list_completed_tasks(_: argparse.Namespace) -> int:
+    tasks = load_tasks()
+    completed_tasks = [task for task in tasks if task["status"] == "completed"]
+    print(render_table(completed_tasks))
     return 0
 
 
@@ -154,6 +179,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     list_parser = subparsers.add_parser("list", help="List all tasks.")
     list_parser.set_defaults(handler=list_tasks)
+
+    completed_parser = subparsers.add_parser(
+        "completed", help="List only completed tasks."
+    )
+    completed_parser.set_defaults(handler=list_completed_tasks)
 
     done_parser = subparsers.add_parser("done", help="Mark a task as completed.")
     done_parser.add_argument("id", type=int, help="The task ID.")

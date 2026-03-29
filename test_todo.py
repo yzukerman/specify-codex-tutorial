@@ -38,6 +38,14 @@ def run_cli(args: list[str], monkeypatch: pytest.MonkeyPatch) -> int:
     return todo.main()
 
 
+def colored(text: str, status: str) -> str:
+    if status == "pending":
+        return f"{todo.RED}{text}{todo.RESET}"
+    if status == "completed":
+        return f"{todo.GREEN}{text}{todo.RESET}"
+    return text
+
+
 def test_list_shows_empty_state(
     fake_tasks_file: FakeTasksFile,
     monkeypatch: pytest.MonkeyPatch,
@@ -196,8 +204,47 @@ def test_list_displays_existing_tasks(
 
     captured = capsys.readouterr()
     assert exit_code == 0
-    assert "1  | Buy milk | pending" in captured.out
-    assert "2  | Walk dog | completed" in captured.out
+    assert f"1  | {colored('Buy milk', 'pending')} | {colored('pending  ', 'pending')}" in captured.out
+    assert f"2  | {colored('Walk dog', 'completed')} | {colored('completed', 'completed')}" in captured.out
+    assert captured.err == ""
+
+
+def test_completed_lists_only_completed_tasks(
+    fake_tasks_file: FakeTasksFile,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    fake_tasks_file.content = json.dumps(
+        [
+            {"id": 1, "task": "Buy milk", "status": "pending"},
+            {"id": 2, "task": "Walk dog", "status": "completed"},
+        ]
+    )
+
+    exit_code = run_cli(["completed"], monkeypatch)
+
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert "1  |" not in captured.out
+    assert f"2  | {colored('Walk dog', 'completed')} | {colored('completed', 'completed')}" in captured.out
+    assert captured.err == ""
+
+
+def test_completed_shows_empty_state_when_no_completed_tasks(
+    fake_tasks_file: FakeTasksFile,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    fake_tasks_file.content = json.dumps(
+        [{"id": 1, "task": "Buy milk", "status": "pending"}]
+    )
+
+    exit_code = run_cli(["completed"], monkeypatch)
+
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert "ID | Task | Status" in captured.out
+    assert "No tasks found." in captured.out
     assert captured.err == ""
 
 

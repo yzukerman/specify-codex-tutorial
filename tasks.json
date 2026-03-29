@@ -1,1 +1,7 @@
-[]
+[
+  {
+    "id": 1,
+    "task": "This is the first task",
+    "status": "completed"
+  }
+]
